@@ -1,0 +1,164 @@
+#!/bin/bash
+
+# Define colors
+BLUE='\033[1;34m'
+YELLOW='\033[1;33m'
+GREEN='\033[1;32m'
+RED='\033[1;31m'
+NC='\033[0m' # No color
+clear
+printf "${GREEN}Launching Installer...${NC}"
+# Function to display a banner
+function print_banner() {
+    clear
+    echo -e "${BLUE}"
+    echo "##################################################"
+    echo "##                                              ##"
+    echo "##         Welcome to the NetHunter Setup       ##"
+    echo "##                                              ##"
+    echo "##################################################"
+    echo -e "${NC}"
+    printf "${BLUE}####################################################\n"
+    printf "${BLUE}##                                                ##\n"
+    printf "${BLUE}##  88      a8P         db        88        88    ##\n"
+    printf "${BLUE}##  88    .88'         d88b       88        88    ##\n"
+    printf "${BLUE}##  88   88'          d8''8b      88        88    ##\n"
+    printf "${BLUE}##  88 d88           d8'  '8b     88        88    ##\n"
+    printf "${BLUE}##  8888'88.        d8YaaaaY8b    88        88    ##\n"
+    printf "${BLUE}##  88P   Y8b      d8''''''''8b   88        88    ##\n"
+    printf "${BLUE}##  88     '88.   d8'        '8b  88        88    ##\n"
+    printf "${BLUE}##  88       Y8b d8'          '8b 888888888 88    ##\n"
+    printf "${BLUE}##                                                ##\n"
+    printf "${BLUE}##                           PATCH BY RANJITxRAI  ##\n"
+    printf "${BLUE}####  ############# NetHunter ######################${NC}\n\n"
+}
+
+# Function to display a menu
+function show_menu() {
+    echo -e "${BLUE}Please select an option:${NC}"
+    echo -e "  ${YELLOW}1.${NC} Install ${GREEN}full${NC} version (Complete environment with all tools)"
+    echo -e "  ${YELLOW}2.${NC} Install ${GREEN}minimal${NC} version (Lightweight environment with essential tools)"
+    echo -e "  ${YELLOW}3.${NC} Install ${GREEN}nano${NC} version (Barebones environment)"
+    echo -e "  ${YELLOW}4.${NC} Exit"
+    echo
+    echo -ne "${GREEN}kali-installer@127.0.0.1 ~# ${NC}"
+}
+
+# Display success messages
+function display_success() {
+    echo -e "${BLUE}[✔] $1${NC}"
+}
+
+# Display error messages
+function display_error() {
+    echo -e "${RED}[✘] $1${NC}"
+}
+
+# Detect architecture
+function detect_architecture() {
+    ARCH=$(uname -m)
+    case $ARCH in
+        aarch64) ARCH="arm64" ;;
+        armv7l|armv8l|armhf) ARCH="armhf" ;;
+        *) ARCH="unknown" ;;
+    esac
+    display_success "Detected architecture: $ARCH"
+}
+
+# Install required package
+function install_package() {
+    local package=$1
+    if ! command -v "$package" >/dev/null 2>&1; then
+        echo -e "${BLUE}[!] Installing $package...${NC}"
+        apt update -y >/dev/null 2>&1 && apt upgrade -y >/dev/null 2>&1
+        pkg install -y "$package" >/dev/null 2>&1
+        [ $? -eq 0 ] && display_success "$package installed successfully." || display_error "Failed to install $package."
+    else
+        display_success "$package is already installed."
+    fi
+}
+proot-distro install ubuntu &> /dev/null
+proot-distro remove ubuntu &> /dev/null
+# Download and extract rootfs
+function download_and_extract() {
+    local version=$1
+    local arch=$2
+    local dest_path="/data/data/com.termux/files/usr/var/lib/proot-distro/installed-rootfs/kali-nethunter-rootfs-${version}-${arch}.tar.xz"
+    local base_path="/data/data/com.termux/files/usr/var/lib/proot-distro/installed-rootfs"
+    local extract_path="$base_path/ubuntu"
+
+    # Download rootfs
+    local url="https://kali.download/nethunter-images/current/rootfs/kali-nethunter-rootfs-${version}-${arch}.tar.xz"
+    echo -e "${BLUE}[!] Downloading $version version from: ${NC}$url"
+
+# Check if the tar.xz file already exists
+
+    wget  --no-check-certificate -O "$dest_path" "$url"
+# Download the file
+echo -e "${BLUE}[!] Downloading $version version from: ${NC}$url"
+
+# Retry download up to 3 times
+for i in {1..3}; do
+    wget --no-check-certificate -O "$dest_path" "$url" >/dev/null 2>&1
+    if [ $? -eq 0 ]; then
+        display_success "Download completed."
+        break
+    else
+        display_warning "Attempt $i: Download failed. Retrying..."
+    fi
+done
+
+# Verify if the file was downloaded successfully
+if [ ! -f "$dest_path" ]; then
+    display_error "Failed to download rootfs after 3 attempts. Please check your internet connection."
+    return 1
+fi
+
+    display_success "Download completed."
+
+    # Extract rootfs
+    mkdir -p "$extract_path"
+    echo -e "${BLUE}[!] Extracting rootfs...${NC}"
+    tar -xf "$dest_path" -C "$extract_path" --strip-components=1 >/dev/null 2>&1
+    [ $? -eq 0 ] && display_success "Extraction completed." || display_error "Extraction failed.${NC}${YELLOW}But launch${NC} ${GREEN}nh${NC} ${YELLOW}or${NC} ${GREEN}nethunter${NC} ${YELLOW}that's fine.${NC}"
+}
+
+# Create executable commands
+function create_executables() {
+    local bin_path="/data/data/com.termux/files/usr/bin"
+    echo -e "${BLUE}[!] Creating executables...${NC}"
+    echo "proot-distro login ubuntu" > "$bin_path/nh"
+    echo "proot-distro login ubuntu" > "$bin_path/nethunter"
+    chmod +x "$bin_path/nh" "$bin_path/nethunter"
+    display_success "Commands 'nh' and 'nethunter' are ready to use."
+}
+
+# Main process
+function main() {
+    print_banner
+    detect_architecture
+    install_package wget
+    install_package proot-distro
+
+    while true; do
+        show_menu
+        read -r choice
+        case $choice in
+            1) version="full"; break ;;
+            2) version="minimal"; break ;;
+            3) version="nano"; break ;;
+            4) echo -e "${BLUE}[!] Exiting...${NC}"; exit 0 ;;
+            *) display_error "Invalid choice. Please enter 1, 2, 3, or 4." ;;
+        esac
+    done
+
+    # Proceed with selected version
+    echo -e "${BLUE}[!] You selected: $version version.${NC}"
+    download_and_extract "$version" "$ARCH"
+    create_executables
+
+    echo -e "${BLUE}[✔] Setup complete. Type '${GREEN}nh${BLUE}' or '${GREEN}nethunter${BLUE}' to start.${NC}"
+}
+
+# Start the script
+main
