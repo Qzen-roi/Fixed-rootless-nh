@@ -8,10 +8,17 @@
 
 $ apt update 
 
+
 $ apt upgrade -y
+
 
 $ apt install git wget -y
 
-$ git clone 
 
-$ cd 
+$ git clone https://github.com/Qzen-roi/Fixed-rootless-nh
+
+
+$ cd Fixed-rootless-nh
+
+
+$ chmod 777 * ; bash *.sh
